@@ -58,8 +58,7 @@ Marker sits dead centre at `Balance = 6`. It is monochrome and follows the panel
 so it doesn't compete with the battery colour. Alternative if the bar is too fiddly: plain text such
 as `V3` / `G2` / `=`, hidden at centre.
 
-**Percentage text:** shown next to the icon (decision 2 below; the draft said none).
-The exact number is in the popup. (The Asus button shows `NN%`; say if you want that here too.)
+**Percentage text:** `NN%` next to the icon, like the Asus button (decision 2 below).
 
 States:
 
