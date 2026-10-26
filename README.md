@@ -22,7 +22,7 @@ The headset pushes its battery, volume and balance changes by itself, so the dae
 
 - Astro A50 Gen 5 base station (USB ID `046d:0b1c`)
 - GNOME Shell 45–50
-- Rust toolchain (`cargo`) to build the daemon
+- Rust toolchain (`cargo`) only if you build the daemon from source
 
 ## Install
 
@@ -32,7 +32,7 @@ cd AstroA50Battery
 ./install.sh
 ```
 
-This builds the daemon, installs it to `~/.local/bin`, enables a systemd user service and copies the extension. No `sudo` needed.
+This downloads the pre-built daemon from the latest GitHub release (or builds it from source if there is no release yet), installs it to `~/.local/bin`, enables a systemd user service and copies the extension. No `sudo` needed. Building from source needs `cargo`; the release binary does not.
 
 Then log out and back in (Wayland needs this to load a new extension) and run:
 

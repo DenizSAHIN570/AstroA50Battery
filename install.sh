@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Build the daemon, install it to ~/.local/bin and enable the systemd user service.
+# Install the daemon (pre-built release binary, or built from source if none is available),
+# enable the systemd user service and copy the GNOME extension.
 # Does not use sudo: the udev rule is optional and printed at the end.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+REPO="DenizSAHIN570/AstroA50Battery"
 BINARY_NAME="astro-battery"
 
 GREEN='\033[0;32m'
@@ -15,22 +17,44 @@ info()  { echo -e "${GREEN}[+]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $*"; }
 error() { echo -e "${RED}[x]${NC} $*" >&2; exit 1; }
 
-cargo="$(command -v cargo 2>/dev/null || true)"
-[[ -z "$cargo" && -x "$HOME/.cargo/bin/cargo" ]] && cargo="$HOME/.cargo/bin/cargo"
-[[ -z "$cargo" ]] && error "cargo not found. Install Rust from https://rustup.rs then re-run."
+# ── 1. Get the daemon binary ────────────────────────────────────────────────
 
-info "Building $BINARY_NAME…"
-"$cargo" build --release --manifest-path "$HERE/daemon/Cargo.toml"
+STAGED="$(mktemp)"
+trap 'rm -f "$STAGED"' EXIT
+
+fetch_release_binary() {
+    info "Downloading $BINARY_NAME from GitHub Releases…"
+    curl -fsSL "https://github.com/$REPO/releases/latest/download/$BINARY_NAME" -o "$STAGED"
+}
+
+build_from_source() {
+    local cargo
+    cargo="$(command -v cargo 2>/dev/null || true)"
+    [[ -z "$cargo" && -x "$HOME/.cargo/bin/cargo" ]] && cargo="$HOME/.cargo/bin/cargo"
+    [[ -z "$cargo" ]] && error "cargo not found. Install Rust from https://rustup.rs then re-run."
+    info "Building $BINARY_NAME from source…"
+    "$cargo" build --release --manifest-path "$HERE/daemon/Cargo.toml"
+    cp "$HERE/daemon/target/release/$BINARY_NAME" "$STAGED"
+}
+
+if ! fetch_release_binary 2>/dev/null; then
+    warn "No pre-built release found — building from source."
+    build_from_source
+fi
 
 # Stop a running instance first so the binary can be replaced.
 systemctl --user stop "$BINARY_NAME.service" 2>/dev/null || true
-install -Dm755 "$HERE/daemon/target/release/$BINARY_NAME" "$HOME/.local/bin/$BINARY_NAME"
+install -Dm755 "$STAGED" "$HOME/.local/bin/$BINARY_NAME"
 info "Daemon installed to ~/.local/bin/$BINARY_NAME"
+
+# ── 2. systemd user service ─────────────────────────────────────────────────
 
 install -Dm644 "$HERE/systemd/$BINARY_NAME.service" "$HOME/.config/systemd/user/$BINARY_NAME.service"
 systemctl --user daemon-reload
 systemctl --user enable --now "$BINARY_NAME.service"
 info "Service enabled and started."
+
+# ── 3. GNOME extension ──────────────────────────────────────────────────────
 
 EXT_UUID="astro-a50-battery@gnome"
 EXT_DIR="$HOME/.local/share/gnome-shell/extensions/$EXT_UUID"
