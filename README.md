@@ -20,8 +20,9 @@ The headset pushes its battery, volume and balance changes by itself, so the dae
 
 ## Requirements
 
-- Astro A50 Gen 5 base station (USB ID `046d:0b1c`)
-- GNOME Shell 45–50
+- Astro A50 Gen 5 base station (USB ID `046d:0b1c`). Other A50 models (Gen 4, A50 X) are not supported.
+- GNOME Shell 45–50 on Linux with a systemd user session
+- glibc 2.39 or newer for the pre-built binary (Ubuntu 24.04 / Fedora 40 or newer). On older systems, build from source.
 - Rust toolchain (`cargo`) only if you build the daemon from source
 
 ## Install
@@ -40,7 +41,7 @@ Then log out and back in (Wayland needs this to load a new extension) and run:
 gnome-extensions enable astro-a50-battery@gnome
 ```
 
-Optional: if the daemon can't open the device, install the udev rule. `install.sh` prints the command.
+If the daemon logs a permission error opening the headset (`journalctl --user -u astro-battery`), install the udev rule so your session can access the device. `install.sh` prints the command. Some distros already grant this access; many don't.
 
 ## Update
 

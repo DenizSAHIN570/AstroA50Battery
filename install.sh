@@ -67,6 +67,6 @@ sleep 1
 systemctl --user --no-pager status "$BINARY_NAME.service" | head -5 || true
 
 if ! [[ -f /etc/udev/rules.d/99-astro-battery.rules ]]; then
-    warn "Optional: install the udev rule so hidraw access doesn't depend on other rules:"
+    warn "If the daemon cannot open the headset (permission denied), install the udev rule:"
     echo "    sudo install -Dm644 $HERE/udev/99-astro-battery.rules /etc/udev/rules.d/99-astro-battery.rules && sudo udevadm control --reload && sudo udevadm trigger"
 fi
