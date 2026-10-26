@@ -4,6 +4,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {
@@ -26,7 +27,10 @@ function setAccent(actor, accent) {
 }
 
 function makeLabel(text, styleClass) {
-    return new St.Label({text, style_class: styleClass, y_align: Clutter.ActorAlign.CENTER});
+    const label = new St.Label({text, style_class: styleClass, y_align: Clutter.ActorAlign.CENTER});
+    // Never cut text short with an ellipsis; the rows have room.
+    label.clutter_text.set_ellipsize(Pango.EllipsizeMode.NONE);
+    return label;
 }
 
 function makeSpacer() {
