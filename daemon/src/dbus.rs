@@ -10,7 +10,10 @@ pub const DEVICE0_PATH: &str = "/com/mousewatch/AstroBattery/device0";
 
 #[derive(Debug, Clone)]
 pub struct State {
+    /// "Astro" + the product name the headset reports; "Astro A50" until it answers.
     pub device_name: String,
+    /// `major.minor.patch.build` from the headset, empty until it answers.
+    pub firmware_version: String,
     pub percentage: u8,
     pub status: String,
     pub is_present: bool,
@@ -26,6 +29,7 @@ impl Default for State {
     fn default() -> Self {
         Self {
             device_name: "Astro A50".to_string(),
+            firmware_version: String::new(),
             percentage: 0,
             status: "unknown".to_string(),
             is_present: false,
@@ -96,6 +100,11 @@ impl BatteryDevice {
     }
 
     #[zbus(property)]
+    async fn firmware_version(&self) -> String {
+        self.state.lock().unwrap().firmware_version.clone()
+    }
+
+    #[zbus(property)]
     async fn daemon_version(&self) -> &str {
         env!("CARGO_PKG_VERSION")
     }
@@ -152,6 +161,8 @@ pub async fn publish(conn: &Connection) {
     };
     let emitter = iface_ref.signal_emitter();
     let iface = iface_ref.get().await;
+    let _ = iface.device_name_changed(emitter).await;
+    let _ = iface.firmware_version_changed(emitter).await;
     let _ = iface.percentage_changed(emitter).await;
     let _ = iface.status_changed(emitter).await;
     let _ = iface.is_present_changed(emitter).await;

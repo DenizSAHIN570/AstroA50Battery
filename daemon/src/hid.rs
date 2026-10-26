@@ -12,17 +12,21 @@ const CONTROL_INTERFACE: &str = ":1.8/";
 const REPORT_LEN: usize = 64;
 
 // HID++ 2.0 feature indexes, as G HUB uses them on firmware 1.3.0.24.
+const FIRMWARE_IDX: u8 = 0x04;
+const NAME_IDX: u8 = 0x05;
 const BATTERY_IDX: u8 = 0x06;
 const VOLUME_IDX: u8 = 0x08;
 const BALANCE_IDX: u8 = 0x0A;
 const ACTIVE_IDX: u8 = 0x12;
 
 /// Read-only queries G HUB sends at startup: `02 0c <len> 00 <idx> <fn<<4|swId>`.
-pub const QUERIES: [[u8; 6]; 4] = [
+pub const QUERIES: [[u8; 6]; 6] = [
     [0x02, 0x0C, 0x03, 0x00, BATTERY_IDX, 0x0D],
     [0x02, 0x0C, 0x03, 0x00, VOLUME_IDX, 0x0D],
     [0x02, 0x0C, 0x03, 0x00, BALANCE_IDX, 0x0D],
     [0x02, 0x0C, 0x03, 0x00, ACTIVE_IDX, 0x6D],
+    [0x02, 0x0C, 0x03, 0x00, FIRMWARE_IDX, 0x1D],
+    [0x02, 0x0C, 0x03, 0x00, NAME_IDX, 0x2D],
 ];
 
 #[derive(Debug, PartialEq, Eq)]
@@ -35,6 +39,10 @@ pub enum Event {
     Balance(u8),
     /// false = headset powered off or docked.
     Active(bool),
+    /// Firmware version as `major.minor.patch.build`.
+    Firmware(String),
+    /// Product name as the headset reports it ("A50").
+    Name(String),
 }
 
 /// Decode one 64-byte input report; replies and pushed events share a shape.
@@ -53,6 +61,17 @@ pub fn parse_report(p: &[u8]) -> Option<Event> {
         VOLUME_IDX if !payload.is_empty() => Some(Event::Volume(payload[0].min(31))),
         BALANCE_IDX if !payload.is_empty() => Some(Event::Balance(payload[0].min(12))),
         ACTIVE_IDX if !payload.is_empty() => Some(Event::Active(payload[0] == 0)),
+        // Function 1 of the firmware feature: `01 03 00 18 04 'main'` = 1.3.0.24.
+        FIRMWARE_IDX if p[5] >> 4 == 1 && payload.len() >= 4 => Some(Event::Firmware(format!(
+            "{}.{}.{}.{}",
+            payload[0], payload[1], payload[2], payload[3]
+        ))),
+        // Function 2 of the name feature: length byte, then ASCII.
+        NAME_IDX if p[5] >> 4 == 2 && !payload.is_empty() => {
+            let len = (payload[0] as usize).min(payload.len() - 1);
+            let name = String::from_utf8_lossy(&payload[1..1 + len]).trim().to_string();
+            (!name.is_empty()).then_some(Event::Name(name))
+        }
         _ => None,
     }
 }
@@ -183,6 +202,17 @@ mod tests {
         let on = pad(&[0x02, 0x0C, 0x04, 0x00, 0x12, 0x00, 0x00]);
         assert_eq!(parse_report(&off), Some(Event::Active(false)));
         assert_eq!(parse_report(&on), Some(Event::Active(true)));
+    }
+
+    #[test]
+    fn firmware_and_name_match_live_replies() {
+        // Captured from the headset: firmware 1.3.0.24, name "A50".
+        let fw = pad(&[
+            0x02, 0x0C, 0x0D, 0x00, 0x04, 0x1D, 0x01, 0x03, 0x00, 0x18, 0x04, b'm', b'a', b'i', b'n',
+        ]);
+        let name = pad(&[0x02, 0x0C, 0x07, 0x00, 0x05, 0x2D, 0x03, b'A', b'5', b'0']);
+        assert_eq!(parse_report(&fw), Some(Event::Firmware("1.3.0.24".into())));
+        assert_eq!(parse_report(&name), Some(Event::Name("A50".into())));
     }
 
     #[test]

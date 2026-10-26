@@ -108,6 +108,8 @@ async fn session(conn: &Connection, state: &Arc<Mutex<State>>, path: &std::path:
                 }
                 Event::Volume(pos) => s.volume = ((pos as u32 * 100 + 15) / 31) as u8,
                 Event::Balance(b) => s.balance = b,
+                Event::Firmware(v) => s.firmware_version = v,
+                Event::Name(n) => s.device_name = format!("Astro {n}"),
                 Event::Active(active) => {
                     requery = active && !s.is_active;
                     s.is_active = active;

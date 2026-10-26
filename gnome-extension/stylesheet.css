@@ -23,18 +23,13 @@
     color: rgba(255, 255, 255, 0.65);
 }
 
-/* ── Popup shell: square it off, hairline border, no pointer arrow ───── */
-
-.astro-menu {
-    -arrow-border-radius: 3px;
-    -arrow-background-color: #1e1e1e;
-    -arrow-border-width: 1px;
-    -arrow-border-color: rgba(255, 255, 255, 0.10);
-    -arrow-rise: 0px;
-}
+/* ── Popup shell ─────────────────────────────────────────────────────────
+   GNOME draws the popup in .popup-menu-content (20px radius, system background and
+   border). Keep those, only square the corners and drop the padding. */
 
 .astro-menu-box {
     padding: 0;
+    border-radius: 3px;
 }
 
 .astro-menu-item {
@@ -57,7 +52,6 @@
 .astro-name {
     font-size: 14px;
     font-weight: bold;
-    color: #ffffff;
 }
 
 .astro-sub {
@@ -108,14 +102,12 @@
 .astro-val {
     font-size: 13px;
     font-weight: bold;
-    color: #ffffff;
 }
 
 .astro-big {
     font-size: 34px;
     font-weight: bold;
     letter-spacing: -1px;
-    color: #ffffff;
     margin-top: 4px;
 }
 
@@ -143,6 +135,11 @@
 .astro-accent-orange .astro-seg-on { background-color: #ff7800; }
 .astro-accent-red    .astro-seg-on { background-color: #e01b24; }
 
+.astro-card .astro-balance-marker {
+    background-color: #ffffff;
+    background-color: -st-accent-color;
+}
+
 /* ── Volume bar ──────────────────────────────────────────────────────── */
 
 .astro-bar {
@@ -152,6 +149,7 @@
 
 .astro-bar-fill {
     background-color: #ffffff;
+    background-color: -st-accent-color;
     border-radius: 1px;
 }
 

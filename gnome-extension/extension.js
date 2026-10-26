@@ -118,7 +118,8 @@ function makeBalanceBar(width, height) {
 export default class AstroA50BatteryExtension extends Extension {
     enable() {
         // Indicator button: [battery icon] [NN%] [V --|-- G]
-        this._indicator = new PanelMenu.Button(0.0, 'Astro A50 Battery', false);
+        // 0.5 centres the popup under the icon (0.0 would hang it off to the right).
+        this._indicator = new PanelMenu.Button(0.5, 'Astro A50 Battery', false);
 
         this._box = new St.BoxLayout({style_class: 'panel-status-menu-box'});
         this._icon = new St.Icon({
@@ -193,8 +194,8 @@ export default class AstroA50BatteryExtension extends Extension {
 
     /** Header + three cards (battery, volume, balance) + footer, as one non-interactive item. */
     _buildPopup(menu) {
-        // Square the menu off and let our own card layout supply the padding.
-        menu.actor.add_style_class_name('astro-menu');
+        // GNOME draws the popup in .popup-menu-content (20px radius); this class squares it
+        // off and drops its padding so our own card layout supplies the spacing.
         menu.box.add_style_class_name('astro-menu-box');
 
         const w = this._w = {};
@@ -295,7 +296,8 @@ export default class AstroA50BatteryExtension extends Extension {
             const accent = accentClass(pct, status);
 
             w.name.text = name;
-            w.sub.text = `Gen 5 · ${active ? 'connected' : 'off or docked'}`;
+            const firmware = this._prop('FirmwareVersion', '');
+            w.sub.text = firmware ? `Firmware ${firmware}` : (active ? 'Connected' : 'Off or docked');
             w.chip.text = chipText(status, active);
             setAccent(w.chip, active ? accent : 'astro-accent-neutral');
 
