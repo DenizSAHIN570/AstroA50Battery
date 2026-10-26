@@ -6,6 +6,8 @@ Battery, volume and game/voice balance for the **Astro A50 Gen 5** headset on Li
 - **Popup:** headset name, firmware, battery (with a time estimate), volume and balance.
 - Read-only. It never changes any headset setting.
 
+![Top bar indicator and popup](docs/screenshot.png)
+
 ## How it works
 
 | Part | What it does |
