@@ -119,7 +119,14 @@ impl Headset {
             .read(true)
             .write(true)
             .custom_flags(libc::O_NONBLOCK)
-            .open(path)?;
+            .open(path)
+            .map_err(|e| match e.kind() {
+                io::ErrorKind::PermissionDenied => anyhow::anyhow!(
+                    "permission denied opening {} (install the udev rule, see the README)",
+                    path.display()
+                ),
+                _ => anyhow::Error::from(e),
+            })?;
         // SAFETY: `file` owns a valid open fd that stays open for the AsyncFd's lifetime.
         let fd = unsafe { AsyncFd::register(file) }
             .map_err(|e| anyhow::anyhow!("registering hidraw fd: {e}"))?;
@@ -213,6 +220,19 @@ mod tests {
         let name = pad(&[0x02, 0x0C, 0x07, 0x00, 0x05, 0x2D, 0x03, b'A', b'5', b'0']);
         assert_eq!(parse_report(&fw), Some(Event::Firmware("1.3.0.24".into())));
         assert_eq!(parse_report(&name), Some(Event::Name("A50".into())));
+    }
+
+    #[test]
+    fn open_reports_missing_permission_clearly() {
+        // Root can open anything, so only meaningful for a normal user.
+        if unsafe { libc::geteuid() } == 0 {
+            return;
+        }
+        let err = match Headset::open(Path::new("/etc/shadow")) {
+            Ok(_) => panic!("expected opening /etc/shadow to be denied"),
+            Err(e) => e.to_string(),
+        };
+        assert!(err.contains("permission denied") && err.contains("udev rule"), "{err}");
     }
 
     #[test]

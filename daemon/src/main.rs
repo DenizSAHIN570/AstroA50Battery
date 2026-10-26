@@ -49,6 +49,7 @@ async fn main() -> Result<()> {
 /// re-enumerates on USB now and then, which surfaces as EIO on the open fd.
 async fn run(conn: &Connection, state: &SharedState, predictor: &SharedPredictor) {
     let mut announced_absent = false;
+    let mut last_failure: Option<String> = None;
     loop {
         let Some(path) = hid::find_node() else {
             if !announced_absent {
@@ -59,13 +60,29 @@ async fn run(conn: &Connection, state: &SharedState, predictor: &SharedPredictor
             continue;
         };
         announced_absent = false;
-        tracing::info!("Using {}", path.display());
+        if last_failure.is_none() {
+            tracing::info!("Using {}", path.display());
+        }
 
         if let Err(e) = session(conn, state, predictor, &path).await {
-            tracing::warn!("Session ended: {e:#}");
+            // Log each distinct failure once; a permanent one (e.g. no permission) would
+            // otherwise repeat on every retry.
+            let msg = format!("{e:#}");
+            if last_failure.as_deref() != Some(msg.as_str()) {
+                tracing::warn!("Session ended: {msg}");
+            }
+            last_failure = Some(msg);
         }
+        let had_session = state.lock().unwrap().is_present;
         set_absent(conn, state, predictor).await;
-        sleep(Duration::from_millis(300)).await; // let a re-enumerated node settle
+        if had_session {
+            last_failure = None;
+            // The node usually comes straight back after a re-enumeration.
+            sleep(Duration::from_millis(300)).await;
+        } else {
+            // Never worked since the last success: don't hammer a node that keeps failing.
+            sleep(Duration::from_secs(5)).await;
+        }
     }
 }
 
