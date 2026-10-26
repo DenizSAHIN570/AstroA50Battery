@@ -9,7 +9,7 @@ import St from 'gi://St';
 
 import {
     formatStatus, balanceLabel, balanceFraction, batteryIconName, batteryColorClass,
-    accentClass, chipText, litSegments, BALANCE_MID,
+    accentClass, chipText, litSegments, formatEstimate, BALANCE_MID,
 } from './format.js';
 
 const DBUS_NAME  = 'com.mousewatch.AstroBattery';
@@ -224,6 +224,8 @@ export default class AstroA50BatteryExtension extends Extension {
         batteryText.add_child(makeLabel('BATTERY', 'astro-lbl'));
         w.big = new St.Label({style_class: 'astro-big', y_align: Clutter.ActorAlign.CENTER});
         batteryText.add_child(w.big);
+        w.estimate = makeLabel('', 'astro-est');
+        batteryText.add_child(w.estimate);
         w.segments = new St.BoxLayout({style_class: 'astro-segments', y_align: Clutter.ActorAlign.CENTER});
         w.segs = [];
         for (let i = 0; i < SEGMENTS; i++) {
@@ -314,6 +316,8 @@ export default class AstroA50BatteryExtension extends Extension {
                 else
                     seg.remove_style_class_name('astro-seg-on');
             });
+            w.estimate.text = formatEstimate(
+                status, this._prop('TimeToEmpty', 0), this._prop('TimeToFull', 0));
             w.batteryCard.opacity = active ? 255 : INACTIVE_OPACITY;
 
             w.volume.text = `${volume}%`;

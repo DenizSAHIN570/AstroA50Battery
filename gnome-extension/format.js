@@ -46,6 +46,25 @@ export function chipText(status, active) {
     return active ? formatStatus(status) : 'Off / docked';
 }
 
+function formatDuration(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${Math.max(m, 1)}m`;
+}
+
+/**
+ * Line under the battery number. Empty time counts hours of use (the daemon pauses it while the
+ * headset is off or docked); 0 means the daemon has no estimate yet.
+ */
+export function formatEstimate(status, timeToEmpty, timeToFull) {
+    if (status === 'fully-charged') return 'Fully charged';
+    if (status === 'charging')
+        return timeToFull > 0 ? `≈ ${formatDuration(timeToFull)} to full` : 'Calculating…';
+    if (status === 'discharging')
+        return timeToEmpty > 0 ? `≈ ${formatDuration(timeToEmpty)} left` : 'Calculating…';
+    return '';
+}
+
 /** Lit segments out of 20 (one per 5%). */
 export function litSegments(pct) {
     return Math.min(Math.max(Math.ceil(pct / 5), 0), 20);

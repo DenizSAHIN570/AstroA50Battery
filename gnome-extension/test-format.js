@@ -1,7 +1,7 @@
 // gnome-extension/test-format.js — run with: gjs -m gnome-extension/test-format.js
 import {
     formatStatus, balanceLabel, balanceFraction, batteryIconName, batteryColorClass,
-    accentClass, chipText, litSegments,
+    accentClass, chipText, litSegments, formatEstimate,
 } from './format.js';
 
 const TESTS = [
@@ -40,6 +40,14 @@ const TESTS = [
     [litSegments(100),                    20],
     [litSegments(35),                     7],
     [litSegments(31),                     7],
+    [formatEstimate('discharging', 26400, 0), '≈ 7h 20m left'],
+    [formatEstimate('discharging', 2700, 0),  '≈ 45m left'],
+    [formatEstimate('discharging', 20, 0),    '≈ 1m left'],
+    [formatEstimate('discharging', 0, 0),     'Calculating…'],
+    [formatEstimate('charging', 0, 7800),     '≈ 2h 10m to full'],
+    [formatEstimate('charging', 0, 0),        'Calculating…'],
+    [formatEstimate('fully-charged', 0, 0),   'Fully charged'],
+    [formatEstimate('unknown', 5, 5),         ''],
 ];
 
 let passed = 0;

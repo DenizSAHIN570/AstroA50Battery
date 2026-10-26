@@ -16,6 +16,9 @@ pub struct State {
     pub firmware_version: String,
     pub percentage: u8,
     pub status: String,
+    /// Seconds; 0 = unknown / not applicable. Empty time counts hours of use only.
+    pub time_to_full: u32,
+    pub time_to_empty: u32,
     pub is_present: bool,
     /// false while the headset is powered off or docked (battery value is stale-ish).
     pub is_active: bool,
@@ -32,6 +35,8 @@ impl Default for State {
             firmware_version: String::new(),
             percentage: 0,
             status: "unknown".to_string(),
+            time_to_full: 0,
+            time_to_empty: 0,
             is_present: false,
             is_active: true,
             volume: 0,
@@ -63,17 +68,17 @@ impl BatteryDevice {
         self.state.lock().unwrap().status.clone()
     }
 
-    // No estimates for the headset yet; kept at 0 for interface parity with the mouse.
     #[zbus(property)]
     async fn time_to_full(&self) -> u32 {
-        0
+        self.state.lock().unwrap().time_to_full
     }
 
     #[zbus(property)]
     async fn time_to_empty(&self) -> u32 {
-        0
+        self.state.lock().unwrap().time_to_empty
     }
 
+    // The headset reports no voltage; kept at 0 for interface parity with the mouse.
     #[zbus(property)]
     async fn voltage_mv(&self) -> u32 {
         0
@@ -165,6 +170,8 @@ pub async fn publish(conn: &Connection) {
     let _ = iface.firmware_version_changed(emitter).await;
     let _ = iface.percentage_changed(emitter).await;
     let _ = iface.status_changed(emitter).await;
+    let _ = iface.time_to_empty_changed(emitter).await;
+    let _ = iface.time_to_full_changed(emitter).await;
     let _ = iface.is_present_changed(emitter).await;
     let _ = iface.is_active_changed(emitter).await;
     let _ = iface.volume_changed(emitter).await;
@@ -174,6 +181,21 @@ pub async fn publish(conn: &Connection) {
         (s.percentage, s.status.clone())
     };
     let _ = BatteryDevice::battery_changed(emitter, pct, status).await;
+}
+
+/// Time estimates move on their own between battery events; announce just those.
+pub async fn publish_estimates(conn: &Connection) {
+    let Ok(iface_ref) = conn
+        .object_server()
+        .interface::<_, BatteryDevice>(DEVICE0_PATH)
+        .await
+    else {
+        return;
+    };
+    let emitter = iface_ref.signal_emitter();
+    let iface = iface_ref.get().await;
+    let _ = iface.time_to_empty_changed(emitter).await;
+    let _ = iface.time_to_full_changed(emitter).await;
 }
 
 pub async fn emit_device_added(conn: &Connection) {
