@@ -1,0 +1,30 @@
+.battery-green {
+    color: #57e389;
+}
+
+.battery-orange {
+    color: #ff7800;
+}
+
+.battery-red {
+    color: #e01b24;
+}
+
+.astro-balance-track {
+    background-color: rgba(255, 255, 255, 0.35);
+    border-radius: 1px;
+}
+
+.astro-balance-tick {
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+.astro-balance-marker {
+    background-color: #ffffff;
+    border-radius: 2px;
+}
+
+.astro-balance-letter {
+    font-size: 8pt;
+    color: rgba(255, 255, 255, 0.7);
+}

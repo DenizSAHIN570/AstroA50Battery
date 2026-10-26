@@ -1,0 +1,8 @@
+{
+  "uuid": "astro-a50-battery@gnome",
+  "name": "Astro A50 Battery",
+  "description": "Shows Astro A50 Gen 5 battery, volume and game/voice balance in the GNOME top bar.",
+  "version": 1,
+  "version-name": "0.1.0",
+  "shell-version": ["45", "46", "47", "48", "49", "50"]
+}

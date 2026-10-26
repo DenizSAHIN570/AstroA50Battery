@@ -45,7 +45,7 @@ interface `com.mousewatch.Battery1` (the Asus interface name, so shared code sta
 
 ## Top bar
 
-`[battery icon] [balance indicator]` in one `PanelMenu.Button` / `St.BoxLayout`, like the Asus button.
+`[battery icon] [NN%] [balance indicator]` in one `PanelMenu.Button` / `St.BoxLayout`, like the Asus button.
 
 **Battery icon** (reuse the Asus rules): icon by percentage (`battery-full` > 50, `battery-good` > 10,
 else `battery-caution`; `battery-full-charged` when fully charged), colour classes
@@ -58,7 +58,7 @@ Marker sits dead centre at `Balance = 6`. It is monochrome and follows the panel
 so it doesn't compete with the battery colour. Alternative if the bar is too fiddly: plain text such
 as `V3` / `G2` / `=`, hidden at centre.
 
-**Percentage text:** **(guess)** none in the top bar, because the request says "simple battery icon".
+**Percentage text:** shown next to the icon (decision 2 below; the draft said none).
 The exact number is in the popup. (The Asus button shows `NN%`; say if you want that here too.)
 
 States:
@@ -119,11 +119,17 @@ No shared state. If a combined indicator is wanted later, both daemons already s
 5. Stop the daemon (or trigger a base-station re-enumeration): indicator hides, then returns by itself.
 6. `gnome-shell` journal has no errors with the `[astro-a50-battery]` prefix.
 
-## Open questions
+## Decisions (2026-10-26)
 
-1. Balance indicator: tiny bar with marker, or text like `V3`/`G2`? (bar is my default)
-2. Show `NN%` next to the icon in the top bar, or icon only? (icon only is my default)
-3. Charging variant of the icon in the top bar, or keep the plain icon and show charging only in
-   the popup? (charging variant is my default)
-4. Is `Volume` right? The daemon reports wheel position / 31 as a percentage; it has not been
-   compared with a real on-screen volume value.
+1. Balance indicator: tiny bar with marker. **Approved.**
+2. Top bar shows the icon **and `NN%`** (changed from the draft's "icon only"). **Approved.**
+3. Charging variant of the battery icon in the top bar. **Approved.**
+4. `Volume` = wheel position / 31. Evidence so far: Windows capture had position 19 while G HUB
+   showed 61% (19/31 = 61.3%), max position 31 = 100. A 100 -> 0 wheel recording is available if the
+   endpoints ever look wrong.
+
+## Build status
+
+Implemented in `gnome-extension/` (`extension.js`, `format.js`, `metadata.json`, `stylesheet.css`,
+`test-format.js`). `gjs -m gnome-extension/test-format.js`: 23/23 pass. Not yet loaded in a real
+Shell session (needs install + re-login on Wayland); acceptance checklist above still to run.

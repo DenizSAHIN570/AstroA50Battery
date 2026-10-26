@@ -32,6 +32,13 @@ systemctl --user daemon-reload
 systemctl --user enable --now "$BINARY_NAME.service"
 info "Service enabled and started."
 
+EXT_UUID="astro-a50-battery@gnome"
+EXT_DIR="$HOME/.local/share/gnome-shell/extensions/$EXT_UUID"
+mkdir -p "$EXT_DIR"
+cp "$HERE"/gnome-extension/{extension.js,format.js,metadata.json,stylesheet.css} "$EXT_DIR/"
+info "Extension installed to $EXT_DIR"
+warn "Wayland: log out and back in to load it, then run: gnome-extensions enable $EXT_UUID"
+
 sleep 1
 systemctl --user --no-pager status "$BINARY_NAME.service" | head -5 || true
 
