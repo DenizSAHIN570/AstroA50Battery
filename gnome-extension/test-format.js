@@ -1,6 +1,7 @@
 // gnome-extension/test-format.js — run with: gjs -m gnome-extension/test-format.js
 import {
     formatStatus, balanceLabel, balanceFraction, batteryIconName, batteryColorClass,
+    accentClass, chipText, litSegments,
 } from './format.js';
 
 const TESTS = [
@@ -27,6 +28,18 @@ const TESTS = [
     [batteryColorClass(80, 'discharging'), 'battery-green'],
     [batteryColorClass(10, 'discharging'), 'battery-red'],
     [batteryColorClass(10, 'fully-charged'), 'battery-green'],
+    [accentClass(30, 'discharging'),      'astro-accent-orange'],
+    [accentClass(30, 'charging'),         'astro-accent-green'],
+    [accentClass(80, 'discharging'),      'astro-accent-green'],
+    [accentClass(10, 'discharging'),      'astro-accent-red'],
+    [chipText('discharging', true),       'Discharging'],
+    [chipText('charging', true),          'Charging'],
+    [chipText('discharging', false),      'Off / docked'],
+    [litSegments(30),                     6],
+    [litSegments(0),                      0],
+    [litSegments(100),                    20],
+    [litSegments(35),                     7],
+    [litSegments(31),                     7],
 ];
 
 let passed = 0;

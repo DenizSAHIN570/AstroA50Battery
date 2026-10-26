@@ -8,7 +8,7 @@ import St from 'gi://St';
 
 import {
     formatStatus, balanceLabel, balanceFraction, batteryIconName, batteryColorClass,
-    BALANCE_MID,
+    accentClass, chipText, litSegments, BALANCE_MID,
 } from './format.js';
 
 const DBUS_NAME  = 'com.mousewatch.AstroBattery';
@@ -16,48 +16,103 @@ const DBUS_PATH  = '/com/mousewatch/AstroBattery/device0';
 const DBUS_IFACE = 'com.mousewatch.Battery1';
 
 const INACTIVE_OPACITY = 128;
+const POPUP_WIDTH = 380;
+const SEGMENTS = 20;
+const ACCENTS = ['astro-accent-green', 'astro-accent-orange', 'astro-accent-red'];
+
+function setAccent(actor, accent) {
+    ACCENTS.forEach(c => actor.remove_style_class_name(c));
+    actor.add_style_class_name(accent);
+}
+
+function makeLabel(text, styleClass) {
+    return new St.Label({text, style_class: styleClass, y_align: Clutter.ActorAlign.CENTER});
+}
+
+function makeSpacer() {
+    return new St.Widget({x_expand: true});
+}
+
+function makeRow(...children) {
+    const row = new St.BoxLayout({x_expand: true});
+    children.forEach(c => row.add_child(c));
+    return row;
+}
 
 /**
- * "V ──┃── G" balance bar: a track, a centre tick and a marker that slides
- * from the voice end (left) to the game end (right).
+ * Thin horizontal progress bar that fills the width it is given.
+ * set(fraction) takes 0..1.
  */
-function makeBalanceBar(width, height) {
-    const markerW = 4;
-    const trackH = 2;
-
-    const widget = new St.Widget({
+function makeBar(height) {
+    const track = new St.Widget({
         layout_manager: new Clutter.FixedLayout(),
-        width,
+        style_class: 'astro-bar',
+        x_expand: true,
         height,
-        y_align: Clutter.ActorAlign.CENTER,
     });
-    const track = new St.Widget({style_class: 'astro-balance-track', width, height: trackH});
-    track.set_position(0, Math.floor((height - trackH) / 2));
+    const fill = new St.Widget({style_class: 'astro-bar-fill', height});
+    track.add_child(fill);
+
+    let fraction = 0;
+    const apply = () => fill.set_width(Math.round(track.width * fraction));
+    track.connect('notify::allocation', apply);
+    return {
+        actor: track,
+        set(f) {
+            fraction = Math.min(Math.max(f, 0), 1);
+            apply();
+        },
+    };
+}
+
+/**
+ * Balance track: line, centre tick, sliding marker. Voice end is left, game end right.
+ * Pass `width` for a fixed size (top bar); omit it to fill the available width (popup).
+ */
+function makeBalanceTrack({width = null, height, markerW}) {
+    const props = {layout_manager: new Clutter.FixedLayout(), height};
+    if (width !== null)
+        props.width = width;
+    else
+        props.x_expand = true;
+    const widget = new St.Widget(props);
+
+    const trackH = 2;
+    const track = new St.Widget({style_class: 'astro-balance-track', height: trackH});
     const tick = new St.Widget({style_class: 'astro-balance-tick', width: 1, height});
-    tick.set_position(Math.floor(width / 2), 0);
     const marker = new St.Widget({style_class: 'astro-balance-marker', width: markerW, height});
     widget.add_child(track);
     widget.add_child(tick);
     widget.add_child(marker);
 
-    const setBalance = balance =>
-        marker.set_position(Math.round(balanceFraction(balance) * (width - markerW)), 0);
-    setBalance(BALANCE_MID);
+    let balance = BALANCE_MID;
+    const layout = () => {
+        const w = widget.width;
+        track.set_width(w);
+        track.set_position(0, Math.floor((height - trackH) / 2));
+        tick.set_position(Math.floor(w / 2), 0);
+        marker.set_position(Math.round(balanceFraction(balance) * (w - markerW)), 0);
+    };
+    widget.connect('notify::allocation', layout);
+    return {
+        actor: widget,
+        setBalance(b) {
+            balance = b;
+            layout();
+        },
+    };
+}
 
+/** Top-bar "V --|-- G" balance bar. */
+function makeBalanceBar(width, height) {
+    const track = makeBalanceTrack({width, height, markerW: 3});
     const box = new St.BoxLayout({y_align: Clutter.ActorAlign.CENTER});
-    const letter = text => new St.Label({
-        text,
-        style_class: 'astro-balance-letter',
-        y_align: Clutter.ActorAlign.CENTER,
-    });
-    box.add_child(letter('V'));
-    const gap = () => new St.Widget({width: 4});
-    box.add_child(gap());
-    box.add_child(widget);
-    box.add_child(gap());
-    box.add_child(letter('G'));
-
-    return {actor: box, setBalance};
+    box.add_child(makeLabel('V', 'astro-balance-letter'));
+    box.add_child(new St.Widget({width: 4}));
+    box.add_child(track.actor);
+    box.add_child(new St.Widget({width: 4}));
+    box.add_child(makeLabel('G', 'astro-balance-letter'));
+    return {actor: box, setBalance: track.setBalance};
 }
 
 export default class AstroA50BatteryExtension extends Extension {
@@ -81,27 +136,7 @@ export default class AstroA50BatteryExtension extends Extension {
         this._box.add_child(this._panelBalance.actor);
         this._indicator.add_child(this._box);
 
-        // Popup rows
-        const menu = this._indicator.menu;
-        this._nameItem = new PopupMenu.PopupMenuItem('');
-        menu.addMenuItem(this._nameItem);
-        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._batteryItem = new PopupMenu.PopupMenuItem('');
-        this._volumeItem = new PopupMenu.PopupMenuItem('');
-        this._balanceItem = new PopupMenu.PopupMenuItem('');
-        menu.addMenuItem(this._batteryItem);
-        menu.addMenuItem(this._volumeItem);
-        menu.addMenuItem(this._balanceItem);
-
-        this._menuBalance = makeBalanceBar(140, 12);
-        const barItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
-        barItem.add_child(this._menuBalance.actor);
-        menu.addMenuItem(barItem);
-
-        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._versionItem = new PopupMenu.PopupMenuItem('');
-        this._versionItem.sensitive = false;
-        menu.addMenuItem(this._versionItem);
+        this._buildPopup(this._indicator.menu);
 
         Main.panel.addToStatusArea(this.uuid, this._indicator);
         this._indicator.hide();
@@ -153,6 +188,78 @@ export default class AstroA50BatteryExtension extends Extension {
         }
         this._indicator?.destroy();
         this._indicator = null;
+        this._w = null;
+    }
+
+    /** Header + three cards (battery, volume, balance) + footer, as one non-interactive item. */
+    _buildPopup(menu) {
+        // Square the menu off and let our own card layout supply the padding.
+        menu.actor.add_style_class_name('astro-menu');
+        menu.box.add_style_class_name('astro-menu-box');
+
+        const w = this._w = {};
+        const pop = new St.BoxLayout({vertical: true, style_class: 'astro-pop', width: POPUP_WIDTH});
+
+        // Header: name + sub-line on the left, status chip on the right
+        const titles = new St.BoxLayout({vertical: true});
+        w.name = makeLabel('', 'astro-name');
+        w.sub = makeLabel('', 'astro-sub');
+        titles.add_child(w.name);
+        titles.add_child(w.sub);
+        w.chip = makeLabel('', 'astro-chip');
+        w.chip.y_align = Clutter.ActorAlign.CENTER;
+        pop.add_child(makeRow(titles, makeSpacer(), w.chip));
+
+        const cards = new St.BoxLayout({vertical: true, style_class: 'astro-cards'});
+        pop.add_child(cards);
+
+        // Battery card: big number left, 20 segments (5% each) right
+        const battery = new St.BoxLayout({style_class: 'astro-card'});
+        const batteryText = new St.BoxLayout({vertical: true});
+        batteryText.add_child(makeLabel('BATTERY', 'astro-lbl'));
+        w.big = new St.Label({style_class: 'astro-big', y_align: Clutter.ActorAlign.CENTER});
+        batteryText.add_child(w.big);
+        w.segments = new St.BoxLayout({style_class: 'astro-segments', y_align: Clutter.ActorAlign.CENTER});
+        w.segs = [];
+        for (let i = 0; i < SEGMENTS; i++) {
+            const seg = new St.Widget({style_class: 'astro-seg'});
+            w.segs.push(seg);
+            w.segments.add_child(seg);
+        }
+        battery.add_child(batteryText);
+        battery.add_child(makeSpacer());
+        battery.add_child(w.segments);
+        cards.add_child(battery);
+        w.batteryCard = battery;
+
+        // Volume card
+        const volume = new St.BoxLayout({vertical: true, style_class: 'astro-card'});
+        w.volume = makeLabel('', 'astro-val');
+        volume.add_child(makeRow(makeLabel('VOLUME', 'astro-lbl'), makeSpacer(), w.volume));
+        w.volumeBar = makeBar(4);
+        w.volumeBar.actor.add_style_class_name('astro-bar-gap');
+        volume.add_child(w.volumeBar.actor);
+        cards.add_child(volume);
+
+        // Balance card
+        const balance = new St.BoxLayout({vertical: true, style_class: 'astro-card'});
+        w.balance = makeLabel('', 'astro-val');
+        balance.add_child(makeRow(makeLabel('BALANCE', 'astro-lbl'), makeSpacer(), w.balance));
+        w.balanceTrack = makeBalanceTrack({height: 12, markerW: 4});
+        w.balanceTrack.actor.add_style_class_name('astro-bar-gap');
+        balance.add_child(w.balanceTrack.actor);
+        balance.add_child(makeRow(
+            makeLabel('VOICE', 'astro-ends'), makeSpacer(), makeLabel('GAME', 'astro-ends')));
+        cards.add_child(balance);
+
+        // Footer
+        w.footer = makeLabel('', 'astro-footer');
+        pop.add_child(w.footer);
+
+        const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        item.add_style_class_name('astro-menu-item');
+        item.add_child(pop);
+        menu.addMenuItem(item);
     }
 
     _prop(name, fallback) {
@@ -184,17 +291,33 @@ export default class AstroA50BatteryExtension extends Extension {
             this._box.opacity = active ? 255 : INACTIVE_OPACITY;
 
             // Popup
-            this._nameItem.label.text = name;
-            this._batteryItem.label.text =
-                `Battery: ${pct}%  ·  ${formatStatus(status)}` +
-                (active ? '' : '  (headset off or docked)');
-            this._volumeItem.label.text = `Volume: ${volume}%`;
-            this._balanceItem.label.text = `Balance: ${balanceLabel(balance)}`;
-            this._menuBalance.setBalance(balance);
+            const w = this._w;
+            const accent = accentClass(pct, status);
+
+            w.name.text = name;
+            w.sub.text = `Gen 5 · ${active ? 'connected' : 'off or docked'}`;
+            w.chip.text = chipText(status, active);
+            setAccent(w.chip, active ? accent : 'astro-accent-neutral');
+
+            w.big.clutter_text.set_markup(`${pct}<span size="smaller">%</span>`);
+            setAccent(w.segments, accent);
+            const lit = litSegments(pct);
+            w.segs.forEach((seg, i) => {
+                if (i < lit)
+                    seg.add_style_class_name('astro-seg-on');
+                else
+                    seg.remove_style_class_name('astro-seg-on');
+            });
+            w.batteryCard.opacity = active ? 255 : INACTIVE_OPACITY;
+
+            w.volume.text = `${volume}%`;
+            w.volumeBar.set(volume / 100);
+            w.balance.text = balanceLabel(balance);
+            w.balanceTrack.setBalance(balance);
 
             const daemonVer = this._prop('DaemonVersion', '—');
             const extVer = this.metadata['version-name'] ?? this.metadata.version;
-            this._versionItem.label.text = `Daemon: v${daemonVer}  ·  Extension: v${extVer}`;
+            w.footer.text = `Daemon v${daemonVer}  ·  Extension v${extVer}`;
 
             this._indicator.show();
         } catch (e) {

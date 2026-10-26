@@ -34,6 +34,23 @@ export function batteryIconName(pct, status) {
         : `battery-${level}-symbolic`;
 }
 
+/** Accent for the popup chip and battery segments: green while charging or full. */
+export function accentClass(pct, status) {
+    if (status === 'charging' || status === 'fully-charged') return 'astro-accent-green';
+    if (pct > 50) return 'astro-accent-green';
+    return pct > 10 ? 'astro-accent-orange' : 'astro-accent-red';
+}
+
+/** Text for the status chip in the popup header. */
+export function chipText(status, active) {
+    return active ? formatStatus(status) : 'Off / docked';
+}
+
+/** Lit segments out of 20 (one per 5%). */
+export function litSegments(pct) {
+    return Math.min(Math.max(Math.ceil(pct / 5), 0), 20);
+}
+
 export function batteryColorClass(pct, status) {
     if (status === 'fully-charged' || pct > 50) return 'battery-green';
     return pct > 10 ? 'battery-orange' : 'battery-red';

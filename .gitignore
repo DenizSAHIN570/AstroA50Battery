@@ -2,3 +2,4 @@ System Volume Information/
 *.pcap
 *.pcapng
 target/
+.superpowers/

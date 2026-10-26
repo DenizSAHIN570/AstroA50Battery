@@ -1,14 +1,8 @@
-.battery-green {
-    color: #57e389;
-}
+/* ── Top bar ─────────────────────────────────────────────────────────── */
 
-.battery-orange {
-    color: #ff7800;
-}
-
-.battery-red {
-    color: #e01b24;
-}
+.battery-green  { color: #57e389; }
+.battery-orange { color: #ff7800; }
+.battery-red    { color: #e01b24; }
 
 .astro-balance-track {
     background-color: rgba(255, 255, 255, 0.35);
@@ -16,15 +10,158 @@
 }
 
 .astro-balance-tick {
-    background-color: rgba(255, 255, 255, 0.6);
+    background-color: rgba(255, 255, 255, 0.55);
 }
 
 .astro-balance-marker {
     background-color: #ffffff;
-    border-radius: 2px;
+    border-radius: 1px;
 }
 
 .astro-balance-letter {
-    font-size: 8pt;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 8px;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+/* ── Popup shell: square it off, hairline border, no pointer arrow ───── */
+
+.astro-menu {
+    -arrow-border-radius: 3px;
+    -arrow-background-color: #1e1e1e;
+    -arrow-border-width: 1px;
+    -arrow-border-color: rgba(255, 255, 255, 0.10);
+    -arrow-rise: 0px;
+}
+
+.astro-menu-box {
+    padding: 0;
+}
+
+.astro-menu-item {
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+}
+
+.astro-pop {
+    padding: 10px;
+    spacing: 10px;
+}
+
+.astro-cards {
+    spacing: 6px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+
+.astro-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.astro-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.50);
+}
+
+.astro-chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+.astro-chip.astro-accent-green {
+    background-color: rgba(87, 227, 137, 0.16);
+    color: #57e389;
+}
+
+.astro-chip.astro-accent-orange {
+    background-color: rgba(255, 120, 0, 0.16);
+    color: #ff9a3c;
+}
+
+.astro-chip.astro-accent-red {
+    background-color: rgba(224, 27, 36, 0.22);
+    color: #ff6b6b;
+}
+
+.astro-chip.astro-accent-neutral {
+    background-color: rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.70);
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────── */
+
+.astro-card {
+    background-color: rgba(255, 255, 255, 0.07);
+    border-radius: 3px;
+    padding: 10px 12px;
+}
+
+.astro-lbl {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.astro-val {
+    font-size: 13px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.astro-big {
+    font-size: 34px;
+    font-weight: bold;
+    letter-spacing: -1px;
+    color: #ffffff;
+    margin-top: 4px;
+}
+
+.astro-ends {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 6px;
+}
+
+/* ── Battery segments: 20 x 5% ───────────────────────────────────────── */
+
+.astro-segments {
+    spacing: 2px;
+}
+
+.astro-seg {
+    width: 8px;
+    height: 14px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-radius: 1px;
+}
+
+.astro-accent-green  .astro-seg-on { background-color: #57e389; }
+.astro-accent-orange .astro-seg-on { background-color: #ff7800; }
+.astro-accent-red    .astro-seg-on { background-color: #e01b24; }
+
+/* ── Volume bar ──────────────────────────────────────────────────────── */
+
+.astro-bar {
+    background-color: rgba(255, 255, 255, 0.16);
+    border-radius: 1px;
+}
+
+.astro-bar-fill {
+    background-color: #ffffff;
+    border-radius: 1px;
+}
+
+.astro-bar-gap {
+    margin-top: 9px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+
+.astro-footer {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.38);
 }
