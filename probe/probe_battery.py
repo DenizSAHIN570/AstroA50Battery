@@ -2,68 +2,76 @@
 """Read-only A50 Gen5 battery check.
 
 Sends the one battery query G HUB sends (HID++ 2.0 feature index 6, function 0), prints the
-decoded reply, then keeps listening for pushed battery/state events.
+decoded reply, then keeps listening for pushed battery/state events. The base station
+re-enumerates on USB (seen when the headset is powered off/docked), so the node is rediscovered
+and the query repeated whenever the read fails.
 
-Usage: probe_battery.py /dev/hidrawN [listen_seconds]   (default 30; 0 = query only)
+Usage: probe_battery.py [listen_seconds]   (default 30)
 Run it with `python3 -I`. Only this single query is ever written.
 """
-import os, select, sys, time
+import glob, os, select, sys, time
 
-DEV = sys.argv[1]
-LISTEN = float(sys.argv[2]) if len(sys.argv) > 2 else 30.0
+LISTEN = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0
 
 BATTERY_IDX = 0x06
 STATE_IDX = 0x12  # 00 = headset on, 05 = off (low confidence)
-
-fd = os.open(DEV, os.O_RDWR | os.O_NONBLOCK)
-
-
-def read_until(deadline):
-    while time.time() < deadline:
-        r, _, _ = select.select([fd], [], [], max(0, deadline - time.time()))
-        if not r:
-            return
-        try:
-            yield os.read(fd, 128)
-        except BlockingIOError:
-            return
+T0 = time.time()
 
 
-def describe(p, t0):
-    stamp = f"{time.time() - t0:6.2f}s"
+def log(msg):
+    print(f"{time.time() - T0:7.2f}s {msg}", flush=True)
+
+
+def find_node():
+    """hidraw node of 046d:0b1c interface 8 (the letter shifts, so match via sysfs)."""
+    for d in sorted(glob.glob("/sys/class/hidraw/hidraw*")):
+        p = os.path.realpath(d + "/device")
+        if ":1.8/" in p + "/" and "046D:0B1C" in p.upper():
+            return "/dev/" + os.path.basename(d)
+    return None
+
+
+def describe(p):
     # 02 0c <len> 00 <idx> <fn|sw> <payload...>
     if len(p) < 7 or p[0] != 0x02 or p[1] != 0x0C:
-        return f"{stamp} ?? {p[:16].hex(' ')}"
+        return f"?? {p[:16].hex(' ')}"
     idx, fn, pl = p[4], p[5], p[6:3 + p[2]]
     kind = "event" if fn & 0x0F == 0 else "reply"
     if idx == BATTERY_IDX and len(pl) >= 3:
         b0, b1, b2 = pl[:3]
-        return (f"{stamp} {kind} battery: shown={b1}%  raw?={b0}  "
+        return (f"{kind} battery: shown={b1}%  raw?={b0}  "
                 f"charging={'yes' if b2 else 'no'}  [{pl[:3].hex(' ')}]")
     if idx == STATE_IDX and pl:
-        return f"{stamp} {kind} state idx 0x12 = {pl[0]:02x} ({'off?' if pl[0] == 5 else 'on?'})"
-    return f"{stamp} {kind} idx {idx:02x} fn {fn:02x} [{pl.hex(' ')}]"
+        return f"{kind} state idx 0x12 = {pl[0]:02x} ({'off?' if pl[0] == 5 else 'on?'})"
+    return f"{kind} idx {idx:02x} fn {fn:02x} [{pl.hex(' ')}]"
 
 
-t0 = time.time()
-for _ in read_until(time.time() + 0.2):  # discard anything pending
-    pass
+def session(path, end):
+    """Query once, then print events until `end` or the node dies. Returns True if it died."""
+    fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+    try:
+        query = bytes([0x02, 0x0C, 0x03, 0x00, BATTERY_IDX, 0x0D]).ljust(64, b"\0")
+        log(f"{path}: TX {query[:6].hex(' ')}")
+        os.write(fd, query)
+        while time.time() < end:
+            r, _, _ = select.select([fd], [], [], max(0, min(1.0, end - time.time())))
+            if r:
+                log(describe(os.read(fd, 128)))
+        return False
+    except OSError as e:
+        log(f"{path}: read/write failed: {e!r}  -> device re-enumerated?")
+        return True
+    finally:
+        os.close(fd)
 
-query = bytes([0x02, 0x0C, 0x03, 0x00, BATTERY_IDX, 0x0D]).ljust(64, b"\0")
-print(f"TX {query[:8].hex(' ')} ...")
-os.write(fd, query)
 
-got_reply = False
-for p in read_until(time.time() + 1.0):
-    print(describe(p, t0))
-    got_reply = got_reply or (p[4:6] == bytes([BATTERY_IDX, 0x0D]))
-if not got_reply:
-    print("no battery reply (wrong hidraw node, or framing/index differs on this unit)")
-
-if LISTEN > 0:
-    print(f"listening {LISTEN:.0f}s for pushed events (plug/unplug the headset, power-cycle it)...")
-    end = time.time() + LISTEN
-    while time.time() < end:
-        for p in read_until(end):
-            print(describe(p, t0))
-os.close(fd)
+end = T0 + LISTEN
+while time.time() < end:
+    node = find_node()
+    if node is None:
+        log("no A50 interface-8 node, waiting...")
+        time.sleep(0.5)
+        continue
+    if session(node, end):
+        time.sleep(0.3)  # let the new node settle before rediscovery
+log("done")

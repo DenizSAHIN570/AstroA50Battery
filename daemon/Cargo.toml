@@ -1,0 +1,17 @@
+[package]
+name = "astro-battery"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "astro-battery"
+path = "src/main.rs"
+
+[dependencies]
+zbus               = { version = "5", features = ["tokio"] }
+zvariant           = "5"
+tokio              = { version = "1", features = ["full"] }
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow             = "1"
+libc               = "0.2"

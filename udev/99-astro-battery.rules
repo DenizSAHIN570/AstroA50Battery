@@ -1,0 +1,2 @@
+# Astro A50 Gen 5 base station: grant the active session user access to the control hidraw node.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="0b1c", TAG+="uaccess"

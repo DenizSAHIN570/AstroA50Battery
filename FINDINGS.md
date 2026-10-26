@@ -167,6 +167,39 @@ later entries don't map to plausible IDs, so the format differs from stock HID++
 the daemon should keep using index `6` / `0x12` as G HUB does, and verify with a live battery reply.
 Re-extract the real G HUB calls from `capture-01-app-startup.pcap` if feature IDs become necessary.
 
+## Live event recording on Linux (2026-10-26)
+
+Recorded with `probe/probe_battery.py` (reconnecting version). Confirms the Windows decode:
+
+- Cable (power-only) in/out: battery event `1f 23 01` / `1f 23 00` (charging flag `b2`). 
+- Headset off: `idx 0a [06]` + `idx 0x12 = 05` (repeated ~1 s later). On: `idx 0x12 = 00`, then
+  `idx 0c [00 00 00 0a]` and a battery re-announce `1f 23 00`. Dock state still low confidence
+  (`idx 0c` `…0a`/`…0b` pair seen, not tied to specific actions).
+- Volume wheel: `idx 08 [pos 00 x]`, `pos` 0-31 (seen `11 → 1a → 1f` going up).
+- **USB re-enumeration (cause unknown):** the device dropped off the bus twice across two recordings.
+  The open hidraw fd fails with `OSError(5, EIO)`, the interface-8 node is absent for ~3.8 s, then
+  returns (same `hidraw0` letter, new USB device number and HID instance, e.g. `.0001` -> `.000A`).
+  A fresh battery query on the new node answered normally. **The daemon must treat `EIO`/`ENODEV` as
+  normal, rediscover by VID:PID + `:1.8`, and re-query.** 
+  - First recording: happened after the user accidentally pressed the base's platform-mode button
+    (Xbox/PS/PC).
+  - Second recording: one disconnect at t=47 s, in the middle of power-off/on, dock and wheel
+    actions; the cause is not identified.
+  - Not caused by the `idx 0a` dial run at t=135-143 s (no disconnect there). Earlier guesses that
+    power-off, docking, or the mode button reliably cause it are **unverified**.
+- **Game/Voice balance = `idx 0a`, decoded** (dedicated recording, user pressed the balance buttons):
+  event `idx 0a fn0 [v]`, `v` = position **0x00-0x0c** (13 steps, one event per button press),
+  **middle = 0x06** (what the startup query returns). Voice/chat maxed = `0x00` (6 presses from middle),
+  game maxed = `0x0c` (12 presses from voice-max). No re-enumeration while pressing.
+  The `0a [06]` seen next to the power-off event is just this value being re-announced.
+- Still untested: out-of-range behaviour.
+
+### Battery rounding (resolved)
+
+Later reply `1e 1e 00` (raw 30, shown 30%) after the earlier `1f 23 00` (raw 31, shown 35%): the headset
+discharged by one raw point and the shown value stepped down. Consistent with
+`shown = ceil(raw / 5) * 5`. The daemon uses `b1` (steps of 5) as the percentage.
+
 ## Prior art
 
 - [eh-fifty](https://pypi.org/project/eh-fifty): reverse-engineered Python lib for **Gen 4** over PyUSB.

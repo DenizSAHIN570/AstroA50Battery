@@ -1,0 +1,14 @@
+[Unit]
+Description=Astro A50 Battery Monitor Daemon
+After=graphical-session.target dbus.socket
+Wants=dbus.socket
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/astro-battery
+Restart=on-failure
+RestartSec=5
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=graphical-session.target
